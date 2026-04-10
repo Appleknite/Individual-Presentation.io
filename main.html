@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Space Debris Cleaner</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { overflow: hidden; font-family: 'Courier New', monospace; background: #000; }
+
+    .overlay {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 999; color: #00ffcc;
+      background: radial-gradient(ellipse at center, #04001a 0%, #000008 100%);
+    }
+    .overlay.hidden { display: none !important; }
+
+    @keyframes pulse  { 0%,100%{opacity:.3} 50%{opacity:1} }
+    @keyframes glow   { 0%,100%{text-shadow:0 0 12px #00ffcc,0 0 24px #00ffcc} 50%{text-shadow:0 0 35px #00ffcc,0 0 70px #00aaff} }
+    @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+    #flash-screen .rocket   { font-size:clamp(3em,8vw,5em); animation:floatY 2.8s ease-in-out infinite; }
+    #flash-screen .title    { font-size:clamp(1.8em,5.5vw,3.2em); text-align:center; letter-spacing:.12em; animation:glow 2s ease-in-out infinite; margin:.2em 0 .1em; }
+    #flash-screen .subtitle { font-size:.82em; opacity:.55; text-align:center; margin-bottom:.3em; }
+    #flash-screen .creator  { font-size:.9em; opacity:.8; text-align:center; }
+    #flash-screen .tap      { font-size:1em; margin-top:2.5em; animation:pulse 1.6s ease-in-out infinite; }
+
+    .panel { background:rgba(0,255,204,.05); border:1px solid rgba(0,255,204,.28); border-radius:10px; padding:18px 28px; margin:10px 0; width:min(420px,92vw); }
+    .panel h3 { font-size:.75em; opacity:.55; letter-spacing:.22em; text-transform:uppercase; margin-bottom:12px; }
+    .row  { display:flex; align-items:center; justify-content:space-between; margin:9px 0; font-size:.95em; }
+    .toggle-btn, .diff-btn { background:transparent; border:2px solid #00ffcc; color:#00ffcc; padding:5px 16px; border-radius:4px; cursor:pointer; font-family:inherit; font-size:.88em; letter-spacing:.1em; transition:all .2s; }
+    .toggle-btn.on, .diff-btn.active { background:#00ffcc; color:#000; }
+    .diff-btns { display:flex; gap:8px; }
+    .howto { font-size:.8em; line-height:2.1; }
+    .howto span { display:block; }
+    .big-btn { background:transparent; border:2px solid #00ffcc; color:#00ffcc; padding:13px 38px; border-radius:6px; cursor:pointer; font-family:inherit; font-size:1.05em; letter-spacing:.15em; transition:all .3s; margin-top:14px; }
+    .big-btn:hover, .big-btn:active { background:#00ffcc; color:#000; box-shadow:0 0 18px #00ffcc; }
+
+    #hud { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; justify-content:space-between; align-items:center; padding:8px 18px; pointer-events:none; background:linear-gradient(to bottom,rgba(0,0,15,.85) 0%,transparent 100%); color:#00ffcc; font-size:clamp(13px,3.5vw,18px); text-shadow:0 0 8px #00ffcc; }
+    #hud.hidden { display:none; }
+    #hud .hv { display:flex; flex-direction:column; align-items:center; gap:1px; }
+    #hud .hl { font-size:.65em; opacity:.55; letter-spacing:.15em; }
+    #hud .hv span:last-child { font-size:1.3em; }
+
+    .result-icon  { font-size:3.5em; margin-bottom:.15em; }
+    .result-h2    { font-size:clamp(1.5em,5vw,2.2em); letter-spacing:.2em; margin-bottom:.2em; }
+    .result-sub   { font-size:.88em; opacity:.7; margin:.3em 0; }
+    .result-score { font-size:2em; margin:.5em 0; text-shadow:0 0 18px #00ffcc; }
+  </style>
+</head>
+<body>
+
+<div id="flash-screen" class="overlay">
+  <div class="rocket">🚀</div>
+  <h1 class="title">SPACE DEBRIS<br>CLEANER</h1>
+  <p class="subtitle">CMPT 461 Immersive Computing &nbsp;·&nbsp; Trinity Western University &nbsp;·&nbsp; 2026</p>
+  <p class="creator">Created by: <strong>[YOUR NAME]</strong> &nbsp;·&nbsp; Student ID: [YOUR ID]</p>
+  <p class="tap">▶ Tap anywhere to continue ◀</p>
+</div>
+
+<div id="setup-screen" class="overlay hidden">
+  <h2 style="letter-spacing:.2em;margin-bottom:.5em;">⚙ MISSION BRIEFING</h2>
+  <div class="panel">
+    <h3>Settings</h3>
+    <div class="row"><label>Background Music</label><button id="music-toggle" class="toggle-btn on">ON</button></div>
+    <div class="row"><label>Difficulty</label>
+      <div class="diff-btns">
+        <button class="diff-btn active" data-diff="normal">NORMAL</button>
+        <button class="diff-btn" data-diff="hard">HARD</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>How to Play</h3>
+    <div class="howto">
+      <span>🎯 <b>GAZE</b> at debris — hold 1.5 s to zap it</span>
+      <span>☄️ Asteroid <b style="color:#ffdd00">+10</b> &nbsp;·&nbsp; 🛰 Broken Sat <b style="color:#00ff88">+15</b></span>
+      <span>🛰 <b style="color:#ff4444">AVOID</b> green Active Satellites — <b style="color:#ff4444">−20 pts</b></span>
+      <span>☠️ Debris reaching you = lose a <b style="color:#ff4444">❤️ life</b> (3 lives)</span>
+      <span>🏆 Clear Level 1 timer to unlock Level 2!</span>
+    </div>
+  </div>
+  <button id="start-btn" class="big-btn">🚀 LAUNCH MISSION</button>
+</div>
+
+<div id="hud" class="hidden">
+  <div class="hv"><span class="hl">SCORE</span><span id="hud-score">0</span></div>
+  <div class="hv"><span id="hud-level" class="hl">LEVEL 1</span><span id="hud-timer">60s</span></div>
+  <div class="hv"><span class="hl">LIVES</span><span id="hud-lives">❤️❤️❤️</span></div>
+</div>
+
+<div id="level-complete" class="overlay hidden">
+  <div class="result-icon">🎉</div>
+  <h2 class="result-h2">SECTOR CLEARED!</h2>
+  <p class="result-sub">Excellent work, Commander!</p>
+  <div class="result-score">Score: <span id="lc-score">0</span></div>
+  <p class="result-sub">Level 2 — faster debris, more active satellites!</p>
+  <button id="next-level-btn" class="big-btn">▶ NEXT LEVEL</button>
+</div>
+
+<div id="end-screen" class="overlay hidden">
+  <div id="end-icon" class="result-icon">💀</div>
+  <h2 id="end-title" class="result-h2">GAME OVER</h2>
+  <p id="end-msg" class="result-sub">The debris won this round…</p>
+  <div class="result-score">Final Score: <span id="end-score">0</span></div>
+  <button id="restart-btn" class="big-btn">↺ PLAY AGAIN</button>
+</div>
+
+<a-scene background="color:#000010" vr-mode-ui="enabled:true" renderer="antialias:true">
+
+  <!-- Asset registry — textures go here so A-Frame can load them safely -->
+  <a-assets id="asset-store" timeout="10000"></a-assets>
+
+  <a-entity id="rig" position="0 0 0">
+    <a-entity id="cam" camera="fov:80" look-controls="touchEnabled:true;magicWindowTrackingEnabled:true">
+
+      <a-entity id="gaze-cursor"
+        cursor="fuse:false"
+        raycaster="objects:.hittable; far:80; interval:60"
+        position="0 0 0">
+      </a-entity>
+
+      <a-entity position="0 0 -3">
+        <a-torus id="ret-ring" radius="0.04" radius-tubular="0.004"
+          material="color:#00ffcc; shader:flat; opacity:0.6">
+        </a-torus>
+        <a-sphere radius="0.005" material="color:white; shader:flat"></a-sphere>
+      </a-entity>
+
+      <a-entity id="vr-hud" position="0 0.2 -2" visible="false">
+        <a-plane width="2.2" height="0.24" material="color:#000033; opacity:0.7; transparent:true" position="0 0 -0.01"></a-plane>
+        <a-text id="vh-score" value="SCORE: 0"   color="#00ffcc" align="left"   position="-0.95 0 0" width="1.1"></a-text>
+        <a-text id="vh-level" value="LVL 1  60s" color="#ffffaa" align="center" position="0 0 0"     width="0.9"></a-text>
+        <a-text id="vh-lives" value="❤ ❤ ❤"     color="#ff7777" align="right"  position="0.95 0 0"  width="0.9"></a-text>
+      </a-entity>
+
+    </a-entity>
+  </a-entity>
+
+  <a-light type="ambient"     color="#223344" intensity="1.2"></a-light>
+  <a-light type="directional" color="#aabbff" intensity="1.4" position="3 4 2"></a-light>
+  <a-light type="point"       color="#0044aa" intensity="0.6" distance="80" position="0 0 0"></a-light>
+
+  <a-entity id="stars"></a-entity>
+  <a-entity id="game-root"></a-entity>
+
+</a-scene>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────────────────────────
+function rnd(a,b){ return Math.random()*(b-a)+a; }
+
+// ─────────────────────────────────────────────────────────────
+//  TEXTURE SYSTEM
+//
+//  KEY FIX: A-Frame attribute strings use ";" as delimiter, so
+//  embedding a raw data URL like "src:data:image/png;base64,..."
+//  breaks parsing at the semicolon after "png".
+//
+//  Solution: inject each canvas as an <img> into <a-assets> and
+//  reference it by #id selector — safe in attribute strings.
+// ─────────────────────────────────────────────────────────────
+const TEX = {};
+
+function makeTex(w, h, drawFn) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  drawFn(canvas.getContext('2d'), w, h);
+
+  const img = new Image();
+  img.src = canvas.toDataURL('image/png');
+  const id = 'tex' + Math.random().toString(36).slice(2,8);
+  img.id = id;
+  document.getElementById('asset-store').appendChild(img);
+  return '#' + id;
+}
+
+function generateTextures() {
+  // Asteroid — rocky brown surface
+  TEX.asteroid = makeTex(256, 256, (ctx, W, H) => {
+    const g = ctx.createRadialGradient(W*.4,H*.38,4,W*.5,H*.5,W*.72);
+    g.addColorStop(0,'#9a7030');
+    g.addColorStop(0.5,'#5a3a18');
+    g.addColorStop(1,'#1e0f04');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // Noise
+    for (let i = 0; i < 3000; i++) {
+      const x=rnd(0,W), y=rnd(0,H), v=rnd(-45,45);
+      ctx.fillStyle = v>0 ? `rgba(255,200,100,${v/220})` : `rgba(0,0,0,${-v/110})`;
+      ctx.fillRect(x, y, 2, 2);
+    }
+    // Craters
+    for (let i = 0; i < 10; i++) {
+      const x=rnd(14,W-14), y=rnd(14,H-14), r=rnd(6,22);
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+    }
+  });
+
+  // Broken satellite — metallic with damage
+  TEX.brokenSat = makeTex(256, 256, (ctx, W, H) => {
+    const g = ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'#8899aa'); g.addColorStop(.5,'#ccdde8'); g.addColorStop(1,'#556677');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = 'rgba(0,20,40,0.45)'; ctx.lineWidth = 3;
+    for (let i=1;i<5;i++) { ctx.beginPath();ctx.moveTo(i*50,0);ctx.lineTo(i*50,H);ctx.stroke(); }
+    for (let i=1;i<5;i++) { ctx.beginPath();ctx.moveTo(0,i*50);ctx.lineTo(W,i*50);ctx.stroke(); }
+    for (let i=0;i<7;i++) {
+      const x=rnd(8,W-8), y=rnd(8,H-8), r=rnd(5,18);
+      const dg = ctx.createRadialGradient(x,y,0,x,y,r);
+      dg.addColorStop(0,'rgba(10,4,0,0.9)'); dg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.strokeStyle='rgba(60,28,0,0.65)'; ctx.lineWidth=2;
+    for (let i=0;i<10;i++) {
+      ctx.beginPath(); ctx.moveTo(rnd(0,W),rnd(0,H)); ctx.lineTo(rnd(0,W),rnd(0,H)); ctx.stroke();
+    }
+  });
+
+  // Solar panel — blue grid
+  TEX.solar = makeTex(128, 128, (ctx, W, H) => {
+    ctx.fillStyle = '#18386a'; ctx.fillRect(0,0,W,H);
+    const cs = 16;
+    for (let r=0;r<H/cs;r++) for (let c=0;c<W/cs;c++) {
+      ctx.fillStyle = (r+c)%2===0 ? '#1d4898' : '#143068';
+      ctx.fillRect(c*cs+1, r*cs+1, cs-2, cs-2);
+    }
+    ctx.strokeStyle='#4466aa'; ctx.lineWidth=0.6;
+    for (let i=0;i<=W/cs;i++) { ctx.beginPath();ctx.moveTo(i*cs,0);ctx.lineTo(i*cs,H);ctx.stroke(); }
+    for (let i=0;i<=H/cs;i++) { ctx.beginPath();ctx.moveTo(0,i*cs);ctx.lineTo(W,i*cs);ctx.stroke(); }
+  });
+
+  // Active satellite — clean with ACTIVE label
+  TEX.goodSat = makeTex(256, 256, (ctx, W, H) => {
+    ctx.fillStyle = '#d8eaff'; ctx.fillRect(0,0,W,H);
+    const cs = 32;
+    for (let r=0;r<Math.ceil(H/cs);r++) for (let c=0;c<Math.ceil(W/cs);c++) {
+      ctx.fillStyle = (r+c)%2===0 ? '#1a3a7a' : '#1d4492';
+      ctx.fillRect(c*cs+2, r*cs+2, cs-4, cs-4);
+    }
+    ctx.fillStyle = '#22cc44'; ctx.fillRect(36,100,184,56);
+    ctx.fillStyle = 'white'; ctx.font = 'bold 26px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('ACTIVE', W/2, 128);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MATERIAL HELPER — uses object form to avoid string-parser issues
+// ─────────────────────────────────────────────────────────────
+function applyMat(el, texKey, extra) {
+  el.setAttribute('material', Object.assign({ src: TEX[texKey] }, extra));
+}
+
+// ─────────────────────────────────────────────────────────────
+//  AUDIO
+// ─────────────────────────────────────────────────────────────
+let AC=null, masterGain=null, musicGain=null, musicTimer=null;
+let musicEnabled = true;
+
+function initAudio() {
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = AC.createGain(); masterGain.gain.value=0.7; masterGain.connect(AC.destination);
+    musicGain  = AC.createGain(); musicGain.gain.value=0.18;  musicGain.connect(masterGain);
+  } catch(e) { console.warn('Audio unavailable',e); }
+}
+function tone(freq,type,dur,vol,delay) {
+  vol=vol||0.3; delay=delay||0;
+  if(!AC)return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.connect(g); g.connect(masterGain); o.type=type; o.frequency.value=freq;
+  const t=AC.currentTime+delay;
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.start(t); o.stop(t+dur+0.01);
+}
+function rampTone(f1,f2,type,dur,vol) {
+  vol=vol||0.3;
+  if(!AC)return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.connect(g); g.connect(masterGain); o.type=type;
+  o.frequency.setValueAtTime(f1,AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(f2,AC.currentTime+dur);
+  g.gain.setValueAtTime(vol,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+dur);
+  o.start(); o.stop(AC.currentTime+dur+0.01);
+}
+function noiseBurst(dur,vol,cutoff) {
+  vol=vol||0.3; cutoff=cutoff||400;
+  if(!AC)return;
+  const sr=AC.sampleRate, buf=AC.createBuffer(1,sr*dur,sr), d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  const src=AC.createBufferSource(), flt=AC.createBiquadFilter(), g=AC.createGain();
+  src.buffer=buf; flt.type='lowpass'; flt.frequency.value=cutoff;
+  src.connect(flt); flt.connect(g); g.connect(masterGain);
+  g.gain.setValueAtTime(vol,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+dur);
+  src.start(); src.stop(AC.currentTime+dur+0.01);
+}
+
+const SFX = {
+  zap:      function(){ rampTone(950,140,'sawtooth',0.18,0.28); },
+  boom:     function(){ noiseBurst(0.22,0.45,360); rampTone(220,55,'sine',0.2,0.18); },
+  penalty:  function(){ rampTone(420,90,'square',0.32,0.32); },
+  lifeLost: function(){ [520,360,210].forEach(function(f,i){ tone(f,'sine',0.18,0.32,i*0.18); }); },
+  levelUp:  function(){ [280,380,500,720].forEach(function(f,i){ tone(f,'sine',0.28,0.38,i*0.12); }); },
+  gameOver: function(){ [420,310,210,150].forEach(function(f,i){ tone(f,'sawtooth',0.3,0.32,i*0.16); }); },
+  lock:     function(){ rampTone(460,680,'sine',0.09,0.18); },
+};
+
+function startMusic() {
+  if (!AC||!musicEnabled) return;
+  stopMusic();
+  const notes = [[110,0.9],[130.8,0.65],[164.8,0.65],[110,0.5],[130.8,0.75],[174.6,0.6],[146.8,0.55],[164.8,0.85]];
+  let idx = 0;
+  function play() {
+    if (!musicEnabled||!AC) return;
+    const n = notes[idx++ % notes.length];
+    const freq=n[0], vol=n[1];
+    const o=AC.createOscillator(), o2=AC.createOscillator(), g=AC.createGain();
+    o.connect(g); o2.connect(g); g.connect(musicGain);
+    o.type='sine'; o2.type='triangle';
+    o.frequency.value=freq; o2.frequency.value=freq*2.01; o2.detune.value=6;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.42);
+    g.gain.linearRampToValueAtTime(vol*0.45,t+1.6); g.gain.linearRampToValueAtTime(0,t+2.3);
+    o.start(t); o.stop(t+2.4); o2.start(t); o2.stop(t+2.4);
+  }
+  play(); musicTimer=setInterval(play,1850);
+}
+function stopMusic() { if(musicTimer){clearInterval(musicTimer);musicTimer=null;} }
+
+// ─────────────────────────────────────────────────────────────
+//  LEVEL CONFIG
+// ─────────────────────────────────────────────────────────────
+const LEVELS = {
+  1: { spawnMs:2400, speed:0.7,  duration:60, debrisChance:0.73, maxObj:7,  dwellMs:1500 },
+  2: { spawnMs:1600, speed:1.3,  duration:90, debrisChance:0.54, maxObj:11, dwellMs:1200 }
+};
+
+// ─────────────────────────────────────────────────────────────
+//  GAME STATE
+// ─────────────────────────────────────────────────────────────
+const G = {
+  state:'flash', level:1, score:0, lives:3, timeLeft:60, difficulty:'normal',
+  objects:new Map(), spawnInt:null, countInt:null, rafId:null, lastTick:0
+};
+
+// ─────────────────────────────────────────────────────────────
+//  GAZE
+// ─────────────────────────────────────────────────────────────
+const GAZE = { target:null, elapsed:0, timerInt:null };
+
+function gazeEnter(el) {
+  if (G.state!=='playing') return;
+  if (GAZE.target===el) return;
+  gazeLeave();
+  GAZE.target=el; GAZE.elapsed=0;
+  SFX.lock();
+  const dwellMs = (G.objects.get(el)||{}).dwellMs || 1500;
+  GAZE.timerInt = setInterval(function(){
+    GAZE.elapsed+=50;
+    setReticle(Math.min(GAZE.elapsed/dwellMs,1));
+    if(GAZE.elapsed>=dwellMs){ clearInterval(GAZE.timerInt); zapObject(el); }
+  }, 50);
+}
+function gazeLeave(el) {
+  if (GAZE.target && (!el||GAZE.target===el)) {
+    GAZE.target=null; GAZE.elapsed=0;
+    clearInterval(GAZE.timerInt); GAZE.timerInt=null;
+    setReticle(0);
+  }
+}
+function setReticle(p) {
+  var ring = document.getElementById('ret-ring');
+  if (!ring) return;
+  if (p>0) {
+    ring.setAttribute('material','color:#ff5500; shader:flat; opacity:'+(0.55+p*0.45));
+    ring.setAttribute('radius', (0.04+p*0.02).toFixed(3));
+  } else {
+    ring.setAttribute('material','color:#00ffcc; shader:flat; opacity:0.6');
+    ring.setAttribute('radius','0.04');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  OBJECT BUILDERS
+// ─────────────────────────────────────────────────────────────
+function buildAsteroid(parent) {
+  var sphere = document.createElement('a-sphere');
+  sphere.setAttribute('radius', rnd(0.55,1.0).toFixed(2));
+  sphere.setAttribute('scale', rnd(0.75,1.25).toFixed(2)+' '+rnd(0.7,1.2).toFixed(2)+' '+rnd(0.8,1.2).toFixed(2));
+  sphere.setAttribute('segments-width','12');
+  sphere.setAttribute('segments-height','12');
+  applyMat(sphere,'asteroid',{ roughness:1, metalness:0 });
+  parent.appendChild(sphere);
+}
+
+function buildBrokenSat(parent) {
+  var body = document.createElement('a-box');
+  body.setAttribute('width','0.9'); body.setAttribute('height','0.55'); body.setAttribute('depth','0.55');
+  applyMat(body,'brokenSat',{ roughness:0.65, metalness:0.4 });
+  parent.appendChild(body);
+
+  var wing = document.createElement('a-box');
+  wing.setAttribute('width','1.4'); wing.setAttribute('height','0.07'); wing.setAttribute('depth','0.46');
+  wing.setAttribute('position','0.65 '+rnd(-0.1,0.15).toFixed(2)+' 0');
+  wing.setAttribute('rotation',rnd(-28,28).toFixed(1)+' 0 '+rnd(-20,20).toFixed(1));
+  applyMat(wing,'solar',{ roughness:0.45, metalness:0.6 });
+  parent.appendChild(wing);
+
+  var chunk = document.createElement('a-box');
+  chunk.setAttribute('width','0.22'); chunk.setAttribute('height','0.14'); chunk.setAttribute('depth','0.12');
+  chunk.setAttribute('position',rnd(-0.7,-1.1).toFixed(2)+' '+rnd(-0.3,0.3).toFixed(2)+' 0');
+  chunk.setAttribute('rotation',rnd(0,80).toFixed(0)+' '+rnd(0,80).toFixed(0)+' 0');
+  applyMat(chunk,'brokenSat',{ roughness:0.9, metalness:0.2 });
+  parent.appendChild(chunk);
+}
+
+function buildGoodSat(parent) {
+  var body = document.createElement('a-box');
+  body.setAttribute('width','0.82'); body.setAttribute('height','0.5'); body.setAttribute('depth','0.5');
+  applyMat(body,'goodSat',{ roughness:0.2, metalness:0.75 });
+  parent.appendChild(body);
+
+  [-1.2, 1.2].forEach(function(side){
+    var wing = document.createElement('a-box');
+    wing.setAttribute('width','1.5'); wing.setAttribute('height','0.065'); wing.setAttribute('depth','0.52');
+    wing.setAttribute('position',side.toFixed(1)+' 0 0');
+    applyMat(wing,'solar',{ roughness:0.2, metalness:0.75 });
+    parent.appendChild(wing);
+  });
+
+  var beacon = document.createElement('a-sphere');
+  beacon.setAttribute('radius','0.1'); beacon.setAttribute('position','0 0.38 0.32');
+  beacon.setAttribute('material','color:#00ff44; shader:flat; opacity:0.95');
+  beacon.setAttribute('animation','property:material.opacity; from:1; to:0.15; dir:alternate; loop:true; dur:500; easing:easeInOutSine');
+  parent.appendChild(beacon);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SPAWN
+// ─────────────────────────────────────────────────────────────
+function spawnObject() {
+  if (G.state!=='playing') return;
+  var lvl = LEVELS[G.level];
+  if (G.objects.size >= lvl.maxObj) return;
+
+  var isDebris = Math.random() < lvl.debrisChance;
+  var type = isDebris ? (Math.random()<0.5 ? 'asteroid' : 'broken-sat') : 'good-sat';
+
+  // Spawn on a sphere at 10-16 units — close enough to see clearly
+  var phi  = rnd(0, Math.PI*2);
+  var cosT = rnd(-0.55, 0.55);
+  var sinT = Math.sqrt(1 - cosT*cosT);
+  var r    = rnd(10, 16);
+  var x = (r*sinT*Math.cos(phi)).toFixed(2);
+  var y = rnd(-4, 4).toFixed(2);
+  var z = (r*sinT*Math.sin(phi)).toFixed(2);
+
+  var entity = document.createElement('a-entity');
+  entity.setAttribute('position', x+' '+y+' '+z);
+
+  if      (type==='asteroid')   buildAsteroid(entity);
+  else if (type==='broken-sat') buildBrokenSat(entity);
+  else                          buildGoodSat(entity);
+
+  // Invisible hitbox for gaze detection
+  var hitbox = document.createElement('a-sphere');
+  hitbox.setAttribute('radius','1.5');
+  hitbox.setAttribute('material','color:#ff0000; opacity:0.001; transparent:true; side:double; depthWrite:false');
+  hitbox.classList.add('hittable');
+  hitbox.addEventListener('mouseenter', function(){ gazeEnter(entity); });
+  hitbox.addEventListener('mouseleave', function(){ gazeLeave(entity); });
+  entity.appendChild(hitbox);
+
+  document.getElementById('game-root').appendChild(entity);
+
+  var hardMult = G.difficulty==='hard' ? 1.55 : 1;
+  G.objects.set(entity, {
+    type:    type,
+    speed:   lvl.speed * hardMult,
+    dwellMs: G.difficulty==='hard' ? 1100 : lvl.dwellMs,
+    rx:      rnd(0.004, 0.010),
+    ry:      rnd(0.006, 0.013)
+  });
+}
+
+function destroyObject(el) {
+  G.objects.delete(el);
+  if (GAZE.target===el) gazeLeave(el);
+  if (el.parentNode) el.parentNode.removeChild(el);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ZAP
+// ─────────────────────────────────────────────────────────────
+function zapObject(el) {
+  var data = G.objects.get(el);
+  if (!data) return;
+  var pos = el.object3D.position.clone();
+
+  if (data.type==='asteroid') {
+    G.score+=10; SFX.zap(); SFX.boom();
+    floatText(pos,'+10','#ffdd00'); explode(pos,'#ff8800');
+  } else if (data.type==='broken-sat') {
+    G.score+=15; SFX.zap(); SFX.boom();
+    floatText(pos,'+15','#00ff88'); explode(pos,'#44ddff');
+  } else {
+    G.score=Math.max(0,G.score-20); SFX.penalty();
+    floatText(pos,'-20','#ff3333'); explode(pos,'#ffffff');
+  }
+  destroyObject(el);
+  updateHUD();
+}
+
+function explode(pos, color) {
+  var root = document.getElementById('game-root');
+  var e = document.createElement('a-entity');
+  e.setAttribute('position',pos.x+' '+pos.y+' '+pos.z);
+  for (var i=0;i<12;i++) {
+    var p = document.createElement('a-sphere');
+    var ang=(i/12)*Math.PI*2, spd=rnd(1.5,3);
+    var tx=(Math.cos(ang)*spd).toFixed(2), ty=rnd(-0.8,0.8).toFixed(2), tz=(Math.sin(ang)*spd).toFixed(2);
+    p.setAttribute('radius',rnd(0.07,0.2).toFixed(2));
+    p.setAttribute('material','color:'+color+'; shader:flat; opacity:0.9');
+    p.setAttribute('animation','property:position; to:'+tx+' '+ty+' '+tz+'; dur:400; easing:easeOutQuad');
+    p.setAttribute('animation__f','property:material.opacity; from:0.9; to:0; dur:400');
+    e.appendChild(p);
+  }
+  root.appendChild(e);
+  setTimeout(function(){ if(e.parentNode)e.parentNode.removeChild(e); }, 460);
+}
+
+function floatText(pos, text, color) {
+  var el = document.createElement('a-text');
+  var toY = (pos.y+2.8).toFixed(2);
+  el.setAttribute('value', text); el.setAttribute('color', color);
+  el.setAttribute('position', pos.x+' '+(pos.y+0.5).toFixed(2)+' '+pos.z);
+  el.setAttribute('align','center'); el.setAttribute('width','4');
+  el.setAttribute('animation','property:position; to:'+pos.x+' '+toY+' '+pos.z+'; dur:900; easing:easeOutQuad');
+  el.setAttribute('animation__f','property:material.opacity; from:1; to:0; dur:900');
+  document.getElementById('game-root').appendChild(el);
+  setTimeout(function(){ if(el.parentNode)el.parentNode.removeChild(el); }, 960);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GAME LOOP
+// ─────────────────────────────────────────────────────────────
+function gameLoop(ts) {
+  if (G.state!=='playing') return;
+  var dt = Math.min((ts - G.lastTick)/1000, 0.1);
+  G.lastTick = ts;
+
+  G.objects.forEach(function(data, el){
+    var p = el.object3D.position;
+    var dist = Math.sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+
+    if (dist < 1.8) { playerHit(el, data.type); return; }
+
+    var step = data.speed * dt;
+    p.x -= (p.x/dist)*step;
+    p.y -= (p.y/dist)*step;
+    p.z -= (p.z/dist)*step;
+    el.object3D.rotation.x += data.rx;
+    el.object3D.rotation.y += data.ry;
+  });
+
+  G.rafId = requestAnimationFrame(gameLoop);
+}
+
+function playerHit(el, type) {
+  destroyObject(el);
+  if (type==='good-sat') return;
+  G.lives--; SFX.lifeLost();
+  screenFlash('rgba(255,0,0,0.3)');
+  updateHUD();
+  if (G.lives<=0) endGame(false);
+}
+
+function screenFlash(bg) {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;background:'+bg+';z-index:998;pointer-events:none;transition:opacity .5s';
+  document.body.appendChild(d);
+  setTimeout(function(){d.style.opacity='0';},60);
+  setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},620);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HUD
+// ─────────────────────────────────────────────────────────────
+function updateHUD() {
+  document.getElementById('hud-score').textContent = G.score;
+  document.getElementById('hud-timer').textContent = G.timeLeft+'s';
+  document.getElementById('hud-level').textContent = 'LEVEL '+G.level;
+  var hearts='', darks='';
+  for(var i=0;i<G.lives;i++) hearts+='❤️';
+  for(var i=0;i<3-G.lives;i++) darks+='🖤';
+  document.getElementById('hud-lives').textContent = hearts+darks;
+  var vs=document.getElementById('vh-score');
+  var vl=document.getElementById('vh-level');
+  var vv=document.getElementById('vh-lives');
+  if(vs) vs.setAttribute('value','SCORE: '+G.score);
+  if(vl) vl.setAttribute('value','LVL '+G.level+'  '+G.timeLeft+'s');
+  if(vv) vv.setAttribute('value',G.lives>0 ? '❤ '.repeat(G.lives).trim() : '💀');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SCREENS
+// ─────────────────────────────────────────────────────────────
+function showScreen(id) {
+  ['flash-screen','setup-screen','level-complete','end-screen'].forEach(function(s){
+    document.getElementById(s).classList.add('hidden');
+  });
+  if (id) document.getElementById(id).classList.remove('hidden');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LEVEL CONTROL
+// ─────────────────────────────────────────────────────────────
+function clearObjects() {
+  G.objects.forEach(function(data,el){ if(el.parentNode) el.parentNode.removeChild(el); });
+  G.objects.clear();
+  gazeLeave();
+}
+
+function startLevel(lvlNum) {
+  G.level=lvlNum; G.lives=3; G.state='playing';
+  clearObjects();
+  var lvl = LEVELS[lvlNum];
+  G.timeLeft = lvl.duration;
+  showScreen(null);
+  document.getElementById('hud').classList.remove('hidden');
+  updateHUD();
+
+  clearInterval(G.spawnInt);
+  spawnObject(); spawnObject();   // seed two immediately
+  var ms = G.difficulty==='hard' ? Math.round(lvl.spawnMs*0.62) : lvl.spawnMs;
+  G.spawnInt = setInterval(spawnObject, ms);
+
+  clearInterval(G.countInt);
+  G.countInt = setInterval(function(){
+    G.timeLeft--; updateHUD();
+    if(G.timeLeft<=0){
+      clearInterval(G.countInt);
+      if(G.level<2) endLevel(); else endGame(true);
+    }
+  },1000);
+
+  if(G.rafId) cancelAnimationFrame(G.rafId);
+  G.lastTick = performance.now();
+  G.rafId = requestAnimationFrame(gameLoop);
+  if(musicEnabled) startMusic();
+}
+
+function endLevel() {
+  G.state='level_complete';
+  clearInterval(G.spawnInt); clearInterval(G.countInt);
+  if(G.rafId) cancelAnimationFrame(G.rafId);
+  stopMusic(); clearObjects(); SFX.levelUp();
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('lc-score').textContent = G.score;
+  showScreen('level-complete');
+}
+
+function endGame(won) {
+  G.state = won?'win':'gameover';
+  clearInterval(G.spawnInt); clearInterval(G.countInt);
+  if(G.rafId) cancelAnimationFrame(G.rafId);
+  stopMusic(); clearObjects();
+  won ? SFX.levelUp() : SFX.gameOver();
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('end-icon').textContent  = won?'🏆':'💀';
+  document.getElementById('end-title').textContent = won?'MISSION COMPLETE!':'GAME OVER';
+  document.getElementById('end-msg').textContent   = won?'Earth is safe, Commander!':'The debris won this round…';
+  document.getElementById('end-score').textContent = G.score;
+  showScreen('end-screen');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  STARFIELD
+// ─────────────────────────────────────────────────────────────
+function createStarfield() {
+  var container = document.getElementById('stars');
+  for (var i=0;i<120;i++) {
+    var phi=rnd(0,Math.PI*2), theta=Math.acos(rnd(-1,1)), r=80;
+    var x=(r*Math.sin(theta)*Math.cos(phi)).toFixed(1);
+    var y=(r*Math.cos(theta)).toFixed(1);
+    var z=(r*Math.sin(theta)*Math.sin(phi)).toFixed(1);
+    var s = document.createElement('a-sphere');
+    s.setAttribute('position',x+' '+y+' '+z);
+    s.setAttribute('radius',rnd(0.04,0.2).toFixed(2));
+    s.setAttribute('material','color:white; shader:flat; opacity:'+rnd(0.2,1).toFixed(2));
+    container.appendChild(s);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  var scene = document.querySelector('a-scene');
+
+  function onSceneReady() {
+    generateTextures();
+    createStarfield();
+  }
+  if (scene.hasLoaded) { onSceneReady(); }
+  else { scene.addEventListener('loaded', onSceneReady); }
+
+  document.getElementById('flash-screen').addEventListener('click', function(){
+    initAudio(); showScreen('setup-screen'); G.state='setup';
+  });
+  setTimeout(function(){
+    if(G.state==='flash'){ initAudio(); showScreen('setup-screen'); G.state='setup'; }
+  }, 7000);
+
+  var mBtn = document.getElementById('music-toggle');
+  mBtn.addEventListener('click', function(){
+    musicEnabled = !musicEnabled;
+    mBtn.textContent = musicEnabled?'ON':'OFF';
+    mBtn.classList.toggle('on', musicEnabled);
+    if(musicGain) musicGain.gain.value = musicEnabled ? 0.18 : 0;
+    if(!musicEnabled) stopMusic();
+  });
+
+  document.querySelectorAll('.diff-btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.diff-btn').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active'); G.difficulty = b.dataset.diff;
+    });
+  });
+
+  document.getElementById('start-btn').addEventListener('click', function(){ G.score=0; startLevel(1); });
+  document.getElementById('next-level-btn').addEventListener('click', function(){ startLevel(2); });
+  document.getElementById('restart-btn').addEventListener('click', function(){ G.score=0; showScreen('setup-screen'); G.state='setup'; });
+
+  scene.addEventListener('enter-vr', function(){
+    document.getElementById('vr-hud').setAttribute('visible','true');
+    document.getElementById('hud').style.display='none';
+  });
+  scene.addEventListener('exit-vr', function(){
+    document.getElementById('vr-hud').setAttribute('visible','false');
+    document.getElementById('hud').style.display='';
+  });
+});
+</script>
+</body>
+</html>

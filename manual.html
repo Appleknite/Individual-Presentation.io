@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Debris Cleaner – Manual</title>
+  <style>
+    :root {
+      --accent: #00ffcc; --bg: #040012; --card: rgba(0,255,204,.06);
+      --border: rgba(0,255,204,.22); --text: #c8e8ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; line-height: 1.7; }
+
+    header {
+      text-align: center; padding: 60px 20px 40px;
+      background: radial-gradient(ellipse at top, #08003a 0%, var(--bg) 70%);
+      border-bottom: 1px solid var(--border);
+    }
+    header .rocket { font-size: 3.5em; display: block; margin-bottom: .2em; }
+    header h1 { font-size: clamp(1.8em,5vw,3em); color: var(--accent); letter-spacing: .1em;
+                text-shadow: 0 0 18px var(--accent); }
+    header p  { opacity: .65; font-size: .9em; margin-top: .4em; }
+
+    nav {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      padding: 18px; position: sticky; top: 0; z-index: 10;
+      background: rgba(4,0,18,.92); border-bottom: 1px solid var(--border);
+    }
+    nav a {
+      color: var(--accent); text-decoration: none; font-size: .82em; letter-spacing: .1em;
+      padding: 5px 14px; border: 1px solid var(--border); border-radius: 4px;
+      transition: all .2s;
+    }
+    nav a:hover { background: var(--accent); color: #000; }
+
+    main { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+
+    section { margin-bottom: 50px; }
+    section h2 {
+      color: var(--accent); font-size: 1.3em; letter-spacing: .18em;
+      border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 20px;
+    }
+    section h3 { color: var(--accent); font-size: 1em; opacity: .8; margin: 18px 0 8px; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 24px; margin-bottom: 16px;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th { text-align: left; color: var(--accent); font-size: .8em; letter-spacing: .15em;
+         border-bottom: 1px solid var(--border); padding: 8px 10px; }
+    td { padding: 9px 10px; border-bottom: 1px solid rgba(0,255,204,.08); font-size: .9em; }
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 3px; font-size: .75em;
+      font-weight: bold; letter-spacing: .08em; margin-left: 6px;
+    }
+    .good  { background: #00ff44; color: #000; }
+    .bad   { background: #ff3333; color: #fff; }
+    .neutral { background: #ffaa00; color: #000; }
+
+    ol, ul { padding-left: 1.5em; }
+    li { margin-bottom: 6px; font-size: .93em; }
+
+    code {
+      background: rgba(0,255,204,.12); border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 3px; font-family: 'Courier New', monospace;
+      font-size: .9em; color: var(--accent);
+    }
+    pre {
+      background: rgba(0,0,0,.4); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; overflow-x: auto; font-size: .88em;
+      margin: 12px 0;
+    }
+
+    .tip {
+      background: rgba(0,255,204,.08); border-left: 3px solid var(--accent);
+      padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: .9em;
+    }
+
+    footer {
+      text-align: center; padding: 30px; border-top: 1px solid var(--border);
+      font-size: .82em; opacity: .5;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="rocket">🚀</span>
+  <h1>SPACE DEBRIS CLEANER</h1>
+  <p>Game Manual — CMPT 461 Immersive Computing · Trinity Western University · 2026</p>
+  <p style="margin-top:.5em">Created by: <strong style="color:var(--accent)">[YOUR NAME]</strong></p>
+</header>
+
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#install">Installation</a>
+  <a href="#controls">Controls</a>
+  <a href="#gameplay">Gameplay</a>
+  <a href="#scoring">Scoring</a>
+  <a href="#levels">Levels</a>
+  <a href="#vr">VR Setup</a>
+  <a href="#setup-menu">Setup Menu</a>
+  <a href="#requirements">Requirements</a>
+</nav>
+
+<main>
+
+  <!-- ── OVERVIEW ── -->
+  <section id="overview">
+    <h2>📖 OVERVIEW</h2>
+    <div class="card">
+      <p>
+        <strong>Space Debris Cleaner</strong> is a mobile VR game built with
+        <strong>A-Frame</strong> (WebXR). You are the AI targeting system aboard
+        an orbital defence station. Low-Earth orbit is filling with dangerous space
+        junk — asteroids and broken satellites — that threaten the station.
+      </p>
+      <p style="margin-top:10px">
+        Using only your <strong>gaze</strong> (no hands required), lock on to debris
+        and vaporise it before it reaches you. But be careful: active, operational
+        satellites share the same orbit — destroying one is a costly mistake!
+      </p>
+      <p style="margin-top:10px">
+        Survive two increasingly difficult sectors to save the station.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── INSTALLATION ── -->
+  <section id="install">
+    <h2>⚙ INSTALLATION &amp; RUNNING</h2>
+
+    <h3>Option A — GitHub Pages (recommended)</h3>
+    <ol>
+      <li>Visit the GitHub repository: <code>[YOUR GITHUB URL]</code></li>
+      <li>The game runs directly in your browser — no installation needed.</li>
+      <li>Open the link on any modern browser (Chrome recommended on mobile).</li>
+    </ol>
+
+    <h3>Option B — Run locally from ZIP</h3>
+    <ol>
+      <li>Download and unzip <code>space-debris-cleaner.zip</code>.</li>
+      <li>
+        Serve the files with a local web server. Examples:
+        <pre>
+# Python 3
+python -m http.server 8080
+
+# Node.js (if installed)
+npx serve .
+        </pre>
+      </li>
+      <li>Open <code>http://localhost:8080</code> in Chrome or Firefox.</li>
+      <li>
+        <strong>Do not</strong> open <code>index.html</code> directly via
+        <code>file://</code> — browsers block certain APIs in that mode.
+      </li>
+    </ol>
+
+    <div class="tip">
+      💡 <strong>Mobile play:</strong> Open the URL on your phone's Chrome browser, then
+      tap the VR goggles icon (bottom-right) to enter Cardboard stereoscopic mode.
+    </div>
+
+    <h3>System Requirements</h3>
+    <table>
+      <tr><th>Item</th><th>Requirement</th></tr>
+      <tr><td>Browser</td><td>Chrome 90+, Firefox 88+, Edge 90+ (WebXR + ES6)</td></tr>
+      <tr><td>Mobile VR</td><td>Android / iOS phone + Google Cardboard v2 (or compatible)</td></tr>
+      <tr><td>Internet</td><td>Required (loads A-Frame library from CDN)</td></tr>
+      <tr><td>Permission</td><td>Device orientation / gyroscope (allow when prompted)</td></tr>
+    </table>
+  </section>
+
+  <!-- ── CONTROLS ── -->
+  <section id="controls">
+    <h2>🎮 CONTROLS</h2>
+    <div class="card">
+      <p>This game is designed for <strong>hands-free gaze control</strong> — perfect for
+         Google Cardboard and other mobile VR headsets.</p>
+    </div>
+
+    <table>
+      <tr><th>Action</th><th>How</th></tr>
+      <tr>
+        <td><strong>Look around</strong></td>
+        <td>Physically move your head (gyroscope / device orientation on mobile)<br>
+            or click-drag the mouse on desktop</td>
+      </tr>
+      <tr>
+        <td><strong>Target debris</strong></td>
+        <td>Centre the <span style="color:#ff5500">orange reticle</span> on an object</td>
+      </tr>
+      <tr>
+        <td><strong>Zap debris</strong></td>
+        <td>Hold your gaze on the object for <strong>1.5 seconds</strong> (normal) or
+            <strong>1.2 s</strong> (hard) — the reticle glows orange as it charges</td>
+      </tr>
+      <tr>
+        <td><strong>Navigate menus</strong></td>
+        <td>Tap buttons on screen / touch-tap on mobile</td>
+      </tr>
+      <tr>
+        <td><strong>Enter VR mode</strong></td>
+        <td>Tap the 👓 goggles button (bottom-right of scene)</td>
+      </tr>
+    </table>
+
+    <div class="tip">
+      🎯 <strong>Tip:</strong> The reticle ring turns <span style="color:#ff5500">orange</span>
+      and grows larger as you lock on. Release your gaze before it completes to cancel —
+      useful for accidentally targeting a friendly satellite.
+    </div>
+  </section>
+
+  <!-- ── GAMEPLAY ── -->
+  <section id="gameplay">
+    <h2>🕹 GAMEPLAY</h2>
+
+    <h3>Object Types</h3>
+    <table>
+      <tr><th>Object</th><th>Appearance</th><th>Action</th><th>Result</th></tr>
+      <tr>
+        <td>☄️ Asteroid</td>
+        <td>Rocky brown/grey tumbling sphere</td>
+        <td>Gaze &amp; hold</td>
+        <td><span class="badge good">+10 pts</span></td>
+      </tr>
+      <tr>
+        <td>🛰 Broken Satellite</td>
+        <td>Damaged metallic box, bent solar wing, debris chunk</td>
+        <td>Gaze &amp; hold</td>
+        <td><span class="badge neutral">+15 pts</span></td>
+      </tr>
+      <tr>
+        <td>🛰 Active Satellite</td>
+        <td>Clean blue solar panels, blinking <span style="color:#00ff44">green</span> beacon,
+            red "ACTIVE" label</td>
+        <td><strong>AVOID</strong></td>
+        <td><span class="badge bad">−20 pts</span></td>
+      </tr>
+    </table>
+
+    <h3>Lives</h3>
+    <p>You start each level with <strong>3 lives ❤️❤️❤️</strong>. If any debris
+       (asteroid or broken satellite) reaches your position without being zapped, you
+       lose one life. Active satellites drifting past you do <em>not</em> cost a life.
+       Losing all 3 lives ends the game immediately.</p>
+
+    <h3>Game Flow</h3>
+    <ol>
+      <li><strong>Flash Screen</strong> — Title card with creator name. Tap to proceed.</li>
+      <li><strong>Setup Menu</strong> — Toggle music, pick difficulty, read instructions.</li>
+      <li><strong>Level 1</strong> (60 s) — Moderate speed, 73 % debris, 7 objects max.</li>
+      <li><strong>Level Complete</strong> — See your score, advance to Level 2.</li>
+      <li><strong>Level 2</strong> (90 s) — Faster objects, more active satellites, up to 11 at once.</li>
+      <li><strong>Win / Game Over</strong> — Final score shown; play again anytime.</li>
+    </ol>
+  </section>
+
+  <!-- ── SCORING ── -->
+  <section id="scoring">
+    <h2>⭐ SCORING</h2>
+    <table>
+      <tr><th>Event</th><th>Points</th></tr>
+      <tr><td>Destroy asteroid</td><td style="color:#ffdd00">+10</td></tr>
+      <tr><td>Destroy broken satellite</td><td style="color:#00ff88">+15</td></tr>
+      <tr><td>Accidentally zap active satellite</td><td style="color:#ff4444">−20</td></tr>
+      <tr><td>Score minimum</td><td>0 (cannot go below zero)</td></tr>
+    </table>
+    <p style="margin-top:14px">Score carries over from Level 1 into Level 2 — play efficiently!</p>
+  </section>
+
+  <!-- ── LEVELS ── -->
+  <section id="levels">
+    <h2>📊 LEVEL DETAILS</h2>
+    <table>
+      <tr><th>Parameter</th><th>Level 1</th><th>Level 2</th></tr>
+      <tr><td>Duration</td><td>60 seconds</td><td>90 seconds</td></tr>
+      <tr><td>Object speed</td><td>0.65 u/s (normal) · 1.0 u/s (hard)</td><td>1.25 u/s · 1.9 u/s</td></tr>
+      <tr><td>Spawn interval</td><td>~2.5 s (normal) · ~1.5 s (hard)</td><td>~1.65 s · ~1.0 s</td></tr>
+      <tr><td>Debris ratio</td><td>73 %</td><td>54 %</td></tr>
+      <tr><td>Max simultaneous objects</td><td>7</td><td>11</td></tr>
+      <tr><td>Gaze lock time</td><td>1.5 s (normal) · 1.1 s (hard)</td><td>1.2 s · 1.1 s</td></tr>
+    </table>
+  </section>
+
+  <!-- ── VR SETUP ── -->
+  <section id="vr">
+    <h2>🥽 STEREOSCOPIC VR SETUP</h2>
+    <ol>
+      <li>Open the game URL in <strong>Chrome</strong> on your Android or iOS phone.</li>
+      <li>Complete the Flash Screen and Setup Menu (tap buttons on screen).</li>
+      <li>Once the game is running, tap the <strong>VR goggles icon</strong> (bottom-right).</li>
+      <li>Insert your phone into a <strong>Google Cardboard</strong> headset.</li>
+      <li>The view splits into left/right stereoscopic halves automatically.</li>
+      <li>Move your head to look around — the gyroscope controls the camera.</li>
+      <li>Centre the reticle on debris and hold your gaze to zap!</li>
+    </ol>
+    <div class="tip">
+      📱 <strong>iOS users:</strong> You may need to grant motion sensor permission.
+      A prompt will appear on first load — tap <em>Allow</em>.
+    </div>
+    <div class="tip">
+      🖥 <strong>Desktop testing:</strong> Click and drag to rotate the view. All
+      gaze mechanics work the same way — just use your mouse instead of your head.
+    </div>
+  </section>
+
+  <!-- ── SETUP MENU ── -->
+  <section id="setup-menu">
+    <h2>🎛 SETUP MENU OPTIONS</h2>
+    <table>
+      <tr><th>Option</th><th>Values</th><th>Description</th></tr>
+      <tr>
+        <td>Background Music</td>
+        <td>ON / OFF</td>
+        <td>Toggles the ambient space synthesizer music.
+            Sound effects (zap, explosion, life-lost) are always active.</td>
+      </tr>
+      <tr>
+        <td>Difficulty</td>
+        <td>NORMAL / HARD</td>
+        <td>
+          <strong>Normal:</strong> Standard speed and spawn rates, 1.5 s gaze dwell.<br>
+          <strong>Hard:</strong> 55 % faster objects, 38 % faster spawns, 1.1 s dwell time.
+        </td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- ── REQUIREMENTS MAP ── -->
+  <section id="requirements">
+    <h2>✅ ASSIGNMENT REQUIREMENTS MAP</h2>
+    <table>
+      <tr><th>Requirement</th><th>Implementation</th></tr>
+      <tr><td>Own game idea</td><td>Original orbital-defence gaze shooter concept</td></tr>
+      <tr><td>Manual</td><td>This page (manual.html) + README.md</td></tr>
+      <tr><td>Flash screen</td><td>Animated title overlay with creator name / institution</td></tr>
+      <tr><td>Setup option</td><td>Music toggle + Normal / Hard difficulty selector</td></tr>
+      <tr><td>At least two levels</td><td>Level 1 (60 s) → Level 2 (90 s, harder)</td></tr>
+      <tr><td>Sound effects + music</td><td>Web Audio API — zap, explosion, life-lost, level-up, penalty; ambient synth music (mutable)</td></tr>
+      <tr><td>Scoreboard (always visible)</td><td>HUD overlay (2D) + in-scene VR panel attached to camera</td></tr>
+      <tr><td>Gaze-based control</td><td>A-Frame cursor + raycaster; custom dwell timer (no hands)</td></tr>
+      <tr><td>Stereoscopic view</td><td>A-Frame VR mode — automatic split-screen on mobile</td></tr>
+      <tr><td>Own objects with textures</td><td>Canvas-generated textures for asteroid, broken satellite, active satellite, solar wing; applied to custom compound A-Frame entities</td></tr>
+      <tr><td>Collision detection</td><td>Distance check in game loop (object position vs. origin); triggers life loss</td></tr>
+      <tr><td>No blood / violence</td><td>Zap effect is geometric particle burst, no gore</td></tr>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  Space Debris Cleaner · CMPT 461 Immersive Computing · Trinity Western University · 2026<br>
+  Created by [YOUR NAME] · Built with A-Frame (aframe.io)
+</footer>
+
+</body>
+</html>

@@ -1,14 +1,14 @@
 # 🚀 Space Debris Cleaner
 **CMPT 461 Immersive Computing — Trinity Western University — 2026**
 
-> Created by: **[YOUR NAME]** | Student ID: **[YOUR ID]**
+> Created by: **Dev Gandhi** | Student ID: **649105**
 
 ---
 
 ## Play the Game
-▶ **[Launch Game](https://[YOUR-USERNAME].github.io/[REPO-NAME]/)**
+▶ **[Launch Game](https://Appleknite.github.io/Individual-Presentation.io/main.html)**
 
-📖 **[Read the Manual](https://[YOUR-USERNAME].github.io/[REPO-NAME]/manual.html)**
+📖 **[Read the Manual](https://Appleknite.github.io/Individual-Presentation.io/manual.html)**
 
 ---
 

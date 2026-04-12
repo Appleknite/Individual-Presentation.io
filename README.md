@@ -37,14 +37,6 @@ python -m http.server 8080
 ```
 > Do **not** open `index.html` via `file://` — use a local server.
 
-## Controls
-| Action | How |
-|--------|-----|
-| Look around | Move head (mobile gyroscope) / click-drag (desktop) |
-| Target debris | Centre reticle on object |
-| Zap debris | Hold gaze for 1.5 s (normal) · 1.2 s (hard) |
-| Enter VR | Tap 👓 icon (bottom-right) |
-
 ## File Structure
 ```
 index.html    — game (single self-contained file)
